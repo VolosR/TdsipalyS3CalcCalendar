@@ -50,8 +50,8 @@ const unsigned short bright[676] PROGMEM={
 };
 
 
-const char* ssid     = "IGK20";
-const char* password = "18072019";
+const char* ssid     = "xxxxxx";
+const char* password = "xxxxxxx";
 
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec =3600;            //time zone * 3600 , my time zone is  +1 GTM
