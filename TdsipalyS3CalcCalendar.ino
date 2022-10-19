@@ -128,38 +128,38 @@ void setup() {
   pinMode(0,INPUT_PULLUP);
   pinMode(14,INPUT_PULLUP);
 
-     ledcSetup(0, 10000, 8);
-     ledcAttachPin(38, 0);
-     ledcWrite(0, brightness);
-    
-    tft.init();
-    tft.setRotation(1);
-    tft.setSwapBytes(true);
-   
-    tft.fillScreen(TFT_BLACK);
-    img.createSprite(320, 170);
-    img.setTextDatum(4);
-    img.setTextColor(TFT_WHITE,TFT_BLACK);
+  ledcSetup(0, 10000, 8);
+  ledcAttachPin(38, 0);
+  ledcWrite(0, brightness);
 
-    WiFi.begin(ssid, password);
-   while (WiFi.status() != WL_CONNECTED) {
+  tft.init();
+  tft.setRotation(1);
+  tft.setSwapBytes(true);
+
+  tft.fillScreen(TFT_BLACK);
+  img.createSprite(320, 170);
+  img.setTextDatum(4);
+  img.setTextColor(TFT_WHITE,TFT_BLACK);
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-   }
+  }
 
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-      }
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+}
 
 #define color1 0x33AE  //body
 #define color2 0x22CE //number region
 #define color3 0x2C8E  //buttons region
 
- int caw=22;
-   int cay=20;
-   int cax=150;
-   int cah=22;
+int caw=22;
+int cay=20;
+int cax=150;
+int cah=22;
 
- int seg=0;  
- long t=0;
+int seg=0;  
+long t=0;
 
 void initDraw()
 {
@@ -170,14 +170,14 @@ void initDraw()
   img.drawRoundRect(2,2,118,166,5,TFT_WHITE); ///border
   img.fillRoundRect(fromLeft,26,100,24,5,color2);
   img.setTextColor(TFT_WHITE,color3);
-  for(int i=0;i<n;i++){
+  for(int i=0;i<n;i++) {
     posY[i]=fromTop+(boxH*i)+(space*i);
-    for(int j=0;j<m;j++)
-    {   
+    for(int j=0;j<m;j++) {   
       posX[j]=fromLeft+(boxW*j)+(space*j);
       img.fillRoundRect(posX[j],posY[i],boxW,boxH,3,color3);
       img.drawString(String(buttons[j][i]),posX[j]+boxW/2,posY[i]+boxH/2,2);   
-    }}
+    }
+  }
    img.drawRoundRect(posX[cx],posY[cy],boxW,boxH,3,TFT_WHITE);
 
    img.setTextDatum(5);  
@@ -198,34 +198,30 @@ void initDraw()
    int w=0;
    bool started=0;
    
-   
    for(int i=0;i<6;i++)
-   for(int j=0;j<7;j++){
-
-    if(w==firstDay)
-    started=1;
-   if(started==1 && broj<=daysInMonth){
-   if(broj==dayInMonth)
-   img.setTextColor(TFT_BLACK,TFT_WHITE);
-   else
-   img.setTextColor(TFT_ORANGE,TFT_BLACK);
-   img.drawString(String(broj),cax+(j*caw),cay+cah+(cah*i),2);
-   broj++;
-    }
-   
-   w++;
-   
-   }
+     for(int j=0;j<7;j++) {
+       if(w==firstDay)
+        started=1;
+       if(started==1 && broj<=daysInMonth) {
+         if(broj==dayInMonth)
+           img.setTextColor(TFT_BLACK,TFT_WHITE);
+         else
+           img.setTextColor(TFT_ORANGE,TFT_BLACK);
+         
+           img.drawString(String(broj),cax+(j*caw),cay+cah+(cah*i),2);
+           broj++;
+       }
+       w++;
+     }
+  
    img.setTextDatum(0);
    img.setTextColor(TFT_WHITE,TFT_BLACK);
    img.setFreeFont(&Orbitron_Light_32);
    img.drawString(String(timeHour)+":"+String(timeMin),130,-6);
    img.setFreeFont(&Orbitron_Light_24);
-
    
    img.setTextColor(0xD399,TFT_BLACK);
    img.drawString(String(timeSec),250,-4);
-
    
    img.setTextColor(0x35F9,TFT_BLACK);
    img.setFreeFont(&FreeSans9pt7b);
@@ -240,137 +236,141 @@ void initDraw()
 
    seg=brightness/24;
    for(int i=0;i<seg;i++)
-   img.fillRect(308,150-(i*13),4,11,0x35F9);
-
+    img.fillRect(308,150-(i*13),4,11,0x35F9);
    
     img.drawLine(cax-10,cay-10,cax+152,cay-10,gray);
-  
    
    img.pushImage(298,0,26,26,bright);
    img.pushSprite(0,0);
-   }
+}
 
 
 
 void loop() 
-  {
+{
 
-  if(t+1000<millis()){
-  getLocalTime();
-  t=millis();
+  if(t+1000<millis()) {
+    getLocalTime();
+    t=millis();
   }
 
   if(digitalRead(b)==0)
-  num="";
+    num="";
     
-  if(digitalRead(up)==0){
-  if(db1==0){
-  db1=1;
-  cy--;}
-  }else db1=0;
+  if(digitalRead(up)==0) {
+    if(db1==0){
+      db1=1;
+      cy--;
+    }
+  } 
+  else 
+    db1=0;
 
-  if(digitalRead(down)==0){
-  if(db2==0){
-  db2=1;
-  cy++;}
-  }else db2=0;
+  if(digitalRead(down)==0) {
+    if(db2==0){
+      db2=1;
+      cy++;
+    }
+  } 
+  else 
+    db2=0;
 
-  if(digitalRead(left)==0){
-  if(db4==0){
-  db4=1;
-  cx--;}
-  }else db4=0;
+  if(digitalRead(left)==0) {
+    if(db4==0){
+      db4=1;
+      cx--;
+    }
+  } else
+      db4=0;
   
-  if(digitalRead(right)==0){
-  if(db5==0){
-  db5=1;
-  cx++;}
-  }else db5=0;
+  if(digitalRead(right)==0) {
+    if(db5==0) {
+      db5=1;
+      cx++;
+    }
+  }
+  else 
+    db5=0;
 
-   if(digitalRead(14)==0 && brightness<240){
-   brightness++;
-   ledcSetup(0, 10000, 8);
-     ledcAttachPin(38, 0);
-     
-   ledcWrite(0, brightness);
-   }
+  if(digitalRead(14)==0 && brightness<240) {
+    brightness++;
+    ledcSetup(0, 10000, 8);
+    ledcAttachPin(38, 0);
+    ledcWrite(0, brightness);
+  }
 
-      if(digitalRead(0)==0 && brightness>50){
-   brightness--;
-   ledcSetup(0, 10000, 8);
-     ledcAttachPin(38, 0);
-     
-   ledcWrite(0, brightness);
-   }
-  
-   
-   
+  if(digitalRead(0)==0 && brightness>50) {
+    brightness--;
+    ledcSetup(0, 10000, 8);
+    ledcAttachPin(38, 0);
+    ledcWrite(0, brightness);
+  }
 
   if(cx==4)
-  cx=0;
-   if(cx==-1)
-  cx=3;
+    cx=0;
+  if(cx==-1)
+    cx=3;
   if(cy==4)
-  cy=0;
-   if(cy==-1)
-  cy=3;
+    cy=0;
+  if(cy==-1)
+    cy=3;
 
-   if(digitalRead(a)==0){
-  if(db3==0){
-  db3=1;
+  if(digitalRead(a)==0) {
+    if(db3==0) {
+      db3=1;
 
-  if(buttons[cx][cy]=='0' || buttons[cx][cy]=='1' || buttons[cx][cy]=='2' || buttons[cx][cy]=='3' || buttons[cx][cy]=='4' || buttons[cx][cy]=='5' || buttons[cx][cy]=='6' || buttons[cx][cy]=='7' || buttons[cx][cy]=='8' ||  buttons[cx][cy]=='9' || buttons[cx][cy]=='.' )
-  num=num+String(buttons[cx][cy]);
+      if(buttons[cx][cy]=='0' || buttons[cx][cy]=='1' || buttons[cx][cy]=='2' || buttons[cx][cy]=='3' || buttons[cx][cy]=='4' || buttons[cx][cy]=='5' || buttons[cx][cy]=='6' || buttons[cx][cy]=='7' || buttons[cx][cy]=='8' ||  buttons[cx][cy]=='9' || buttons[cx][cy]=='.' )
+        num=num+String(buttons[cx][cy]);
 
-               if(buttons[cx][cy]=='+') {operation=1; n1=num.toFloat(); num="";}
-              if(buttons[cx][cy]=='-') {operation=2; n1=num.toFloat(); num="";}
-              if(buttons[cx][cy]=='*') {operation=3; n1=num.toFloat(); num="";}
-              if(buttons[cx][cy]=='/') {operation=4; n1=num.toFloat(); num="";}
+        if(buttons[cx][cy]=='+') {operation=1; n1=num.toFloat(); num="";}
+        if(buttons[cx][cy]=='-') {operation=2; n1=num.toFloat(); num="";}
+        if(buttons[cx][cy]=='*') {operation=3; n1=num.toFloat(); num="";}
+        if(buttons[cx][cy]=='/') {operation=4; n1=num.toFloat(); num="";}
 
-  if(buttons[cx][cy]=='=') {
+        if(buttons[cx][cy]=='=') {
 
-               if(operation==1)
-               {float r=n1+num.toFloat(); num=String(r); n1=num.toFloat();
-               int p=r*10.00;
-               if(p%10==0)
-               num=String(p/10);
-               }
+           if(operation==1) {
+            float r=n1+num.toFloat(); num=String(r); n1=num.toFloat();
+            int p=r*10.00;
+            if(p%10==0)
+              num=String(p/10);
+           }
 
-                if(operation==2)
-               {float r=n1-num.toFloat(); num=String(r); n1=num.toFloat();
-                int p=r*10.00;
-               if(p%10==0)
-               num=String(p/10);}
+           if(operation==2) {
+             float r=n1-num.toFloat(); num=String(r); n1=num.toFloat();
+              int p=r*10.00;
+              if(p%10==0)
+                num=String(p/10);
+           }
 
-                if(operation==3)
-               {float r=n1*num.toFloat(); num=String(r); n1=num.toFloat();
-                int p=r*10.00;
-               if(p%10==0)
-               num=String(p/10);}
+           if(operation==3) {
+             float r=n1*num.toFloat(); num=String(r); n1=num.toFloat();
+              int p=r*10.00;
+              if(p%10==0)
+                num=String(p/10);
+           }
 
-                if(operation==4)
-               {float r=n1/num.toFloat(); num=String(r); n1=num.toFloat();
-                int p=r*10.00;
-               if(p%10==0)
-               num=String(p/10);}
-
-              }
-  
-  }
-  }else db3=0;
+           if(operation==4) {
+            float r=n1/num.toFloat(); num=String(r); n1=num.toFloat();
+            int p=r*10.00;
+            if(p%10==0)
+              num=String(p/10);
+           }
+        }
+    }
+  } else 
+      db3=0;
   
   initDraw();
-  }
+}
 
 
-  void getLocalTime()
-  {
+void getLocalTime() {
 
   volt = (analogRead(4) * 2 * 3.3 * 1000) / 4096; 
   struct tm timeinfo;
   
-  if(!getLocalTime(&timeinfo)){
-    
+  if(!getLocalTime(&timeinfo)) {
     return;
   }
   
@@ -378,38 +378,30 @@ void loop()
   strftime(timeMin,3, "%M", &timeinfo);
   strftime(timeSec,3, "%S", &timeinfo);
 
-    
-   strftime(timeWeekDay,10, "%A", &timeinfo);
- 
+  strftime(timeWeekDay,10, "%A", &timeinfo);
   
   String InWeek=String(timeWeekDay);
-  for(int i=0;i<7;i++)
-  {
+  for(int i=0;i<7;i++) {
     if(InWeek==SDay[i])
     dayInWeek=i;
-    }
-
-  
+  }
+ 
   strftime(day,3, "%d", &timeinfo);
   strftime(month,10, "%B", &timeinfo);
   strftime(year,5, "%Y", &timeinfo);
 
   dayInMonth=String(day).toInt();
 
-   for(int i=0;i<12;i++)
-  {
+  for(int i=0;i<12;i++) {
     if(String(month)==Months[i])
-    daysInMonth=mm[i];
-    }
+      daysInMonth=mm[i];
+   }
   
   int j=dayInWeek;
-  for(int i=dayInMonth;i>0;i--)
-  {
+  for(int i=dayInMonth;i>0;i--) {
     firstDay=j;
     j--;
     if(j==-1)
-    j=6;
-    }
-  
-
+      j=6;
   }
+}
