@@ -11,3 +11,5 @@ Pressing a new operator after pressing another operator continues to display
 the correct result, along with the latest operator pressed.
 
 The header of the calculator displays the WiFi SSID.
+
+Original work is made by VolosR
