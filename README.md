@@ -24,7 +24,7 @@ The board used for this project is Lilygo T-display S3 (ESP32-S3 with a screen)
 Custom TFT-eSPI library is needed and can be found on Lilygo github,
 along with instructions on how to config this board on Arduino IDE.
 
-This version (v1.3) has a complete working calculator where each operator
+This version (v1.4) has a complete working calculator where each operator
 calculates and displays the previous result and then waits for new operation.
 The operator is being displayed on screen so we know what has been pressed.
 Pressing a new operator after pressing another operator continues to display
@@ -32,9 +32,10 @@ the correct result, along with the latest operator pressed.
 
 The header of the calculator displays the WiFi SSID.
 
-SmartConfig deployed. The default connection settings are on lines #66-#67.
-If connection can't be established with the hardcoded credentials, you can set SSID and WiFi password
-by loading the EspTouch or SmartConnect app on your mobile phone while T-display is on SmartConfig mode.
+SmartConfig deployed, and can be cancelled with button B. The default connection 
+settings are on lines #66-#67. If connection can't be established with the hardcoded 
+credentials, you can set SSID and WiFi password by loading the EspTouch or SmartConnect 
+app on your mobile phone while T-display is on SmartConfig mode.
 The new SSID and password will be broadcast to the ESP32 board and attempt
 a new connection.
 
