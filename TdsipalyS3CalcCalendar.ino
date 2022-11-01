@@ -133,8 +133,6 @@ void setup() {
   pinMode(15, OUTPUT);
   digitalWrite(15, 1);
 
-  // Serial.begin(921600);
-
   pinMode(up, INPUT_PULLUP);
   pinMode(down, INPUT_PULLUP);
   pinMode(left, INPUT_PULLUP);
@@ -153,14 +151,13 @@ void setup() {
   img.setTextDatum(4);
   img.setTextColor(TFT_WHITE, TFT_BLACK);
 
-  wifi_connect();  //nonet
+  wifi_connect();
   if (!noNet) {
-    ssidStr = WiFi.SSID().c_str();  //nonet
+    ssidStr = WiFi.SSID().c_str();
 
-    gmtSetup = true;  //nonet
-    gmtSet();         //nonet
+    gmtSetup = true;
+    gmtSet();
   }
-
 
   ledcSetup(0, 10000, 8);
   ledcAttachPin(38, 0);
@@ -265,7 +262,6 @@ void initDraw() {
   } else {
     img.drawString(calcDisplay, fromLeft + 94, 38, 2);
   }
-
 
   img.setTextColor(TFT_WHITE, TFT_BLACK);
   caw = 24;
@@ -385,7 +381,7 @@ void loop() {
       if (noNet) {
         getBatteryVoltage();
       } else {
-        getLocalTime();  //nonet
+        getLocalTime();
       }
       t = millis();
     }
@@ -606,7 +602,6 @@ void mathResult(int operation) {
     double r = n1 / num.toDouble();
     num = String(r, 8);
     n1 = num.toDouble();
-
     for (int x = 0; x < 8; x++) {
       if (String(n1, x).toDouble() == String(n1, 8).toDouble()) {
         num = String(r, x);
@@ -723,7 +718,6 @@ void wifi_connect(void) {
     delay(250);
     if (millis() - last_tick > WIFI_CONNECT_WAIT_MAX) { /* Automatically start smartconfig when connection times out */
       if (noNet) {
-        // initLoadingUI();
         break;
       }
       text = "Timed out, starting SmartConfig";
