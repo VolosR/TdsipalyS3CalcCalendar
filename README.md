@@ -1,4 +1,7 @@
 # TdsipalyS3CalcCalendar
+Changelog v1.4
+Ability to cancel SmartConfig and start the app at offline mode.
+
 Changelog v1.32
 Fixed decimal place accuracy to more than 2 decimal places by changing Floats to Doubles.
 
