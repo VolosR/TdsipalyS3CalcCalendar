@@ -1,6 +1,7 @@
 #include <TFT_eSPI.h>
 #include <WiFi.h>
 #include "time.h"
+
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite img = TFT_eSprite(&tft);
 
@@ -49,20 +50,24 @@ const unsigned short bright[676] PROGMEM = {
   0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,  // 0x02A0 (672) pixels
 };
 
-
-const char* ssid     = "xxxxxx";
-const char* password = "xxxxxxx";
-
 const char* ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 3600;  //time zone * 3600 , my time zone is  +1 GTM
-const int daylightOffset_sec = 3600;
+long gmtOffset_sec = (3600 * 1);  //time zone * 3600 , my time zone is  +1 GMT
+int daylightOffset_sec = 3600;    //default setting: daylight saving enabled 1 hour
 
+int gmtOffset = 0;
+bool gmtSetup = false;
 
 #define gray 0xB5B6
 #define blue 0x0AAD
 #define orange 0xC260
 #define purple 0x604D
 #define green 0x1AE9
+
+#define WIFI_SSID "xxxxxx"
+#define WIFI_PASSWORLD "xxxxxxx"
+#define WIFI_CONNECT_WAIT_MAX (10 * 1000)
+
+#define daylightColor TFT_WHITE
 
 char timeHour[3];
 char timeMin[3];
@@ -95,13 +100,17 @@ int posX[16];
 int posY[16];
 
 int cx, cy = 0;
-float n1 = 0;
-float n2 = 0;
+double n1 = 0;
+double n2 = 0;
 String num = "";
 String calcDisplay = "";
+String netDisplayMsg = "";
 int operation = 0;
+bool pressedOperation = false;
 bool changeOperator = false;
 bool firstDigit = true;
+bool dPoint = false;
+bool noNet = false;
 
 char buttons[4][4] = { { '7', '4', '1', '0' }, { '8', '5', '2', '.' }, { '9', '6', '3', '=' }, { '/', '*', '-', '+' } };
 
@@ -114,15 +123,17 @@ int dayInMonth = 0;
 int daysInMonth = 0;
 int firstDay = 0;
 
-int db1, db2, db3, db4, db5, db6 = 0;
+int db1, db2, db3, db4, db5, db6, db7, db8, db9 = 0;
 int brightness = 150;
 
-String ssidStr = "Not Connected";
+String ssidStr = "No WiFi";
 
 void setup() {
 
   pinMode(15, OUTPUT);
   digitalWrite(15, 1);
+
+  // Serial.begin(921600);
 
   pinMode(up, INPUT_PULLUP);
   pinMode(down, INPUT_PULLUP);
@@ -142,13 +153,14 @@ void setup() {
   img.setTextDatum(4);
   img.setTextColor(TFT_WHITE, TFT_BLACK);
 
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
-  ssidStr = WiFi.SSID().c_str();
+  wifi_connect();  //nonet
+  if (!noNet) {
+    ssidStr = WiFi.SSID().c_str();  //nonet
 
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    gmtSetup = true;  //nonet
+    gmtSet();         //nonet
+  }
+
 
   ledcSetup(0, 10000, 8);
   ledcAttachPin(38, 0);
@@ -158,6 +170,7 @@ void setup() {
 #define color1 0x33AE  //body
 #define color2 0x22CE  //number region
 #define color3 0x2C8E  //buttons region
+#define color4 0xA1A1  //pressed operator color
 
 int caw = 22;
 int cay = 20;
@@ -166,6 +179,62 @@ int cah = 22;
 
 int seg = 0;
 long t = 0;
+
+void initDrawNetwork() {
+  img.fillSprite(TFT_BLACK);
+  img.setTextColor(TFT_WHITE, TFT_BLACK);
+  img.setTextDatum(0);
+  img.setTextWrap(true);
+  img.drawString(netDisplayMsg, 5, 2, 2);
+  img.pushSprite(0, 0);
+}
+
+void addLineNetwork(int lineNumber) {
+  img.setTextWrap(true);
+  img.drawString(netDisplayMsg, 5, lineNumber * 20, 2);
+  img.pushSprite(0, 0);
+}
+
+void initDrawGMTset() {
+  img.fillSprite(TFT_BLACK);
+  img.setTextColor(TFT_WHITE, TFT_BLACK);
+  img.setTextDatum(5);
+  img.setFreeFont(&Orbitron_Light_32);
+  if (gmtOffset > 0) {
+    img.drawString("GMT +" + String(gmtOffset) + " hrs", 300, 80);
+  } else if (gmtOffset == 0) {
+    img.drawString("GMT " + String(gmtOffset), 300, 80);
+  } else {
+    img.drawString("GMT " + String(gmtOffset) + " hrs", 300, 80);
+  }
+  if (daylightOffset_sec == 3600) {
+    img.setTextColor(TFT_WHITE, TFT_BLACK);
+    img.drawString("Daylight Saving ENABLED", 300, 110, 2);
+  } else if (daylightOffset_sec == 0) {
+    img.setTextColor(TFT_MAROON, TFT_BLACK);
+    img.drawString("(Daylight Saving Disabled)", 300, 110, 2);
+  }
+  img.setTextColor(TFT_WHITE, TFT_BLACK);
+  img.setTextDatum(2);
+  img.drawString("+ 1 hours", 320, 10, 2);
+  img.setTextDatum(2);
+  img.drawString("- 1 hours", 320, 140, 2);
+  img.setTextDatum(0);
+  img.drawString("B : Daylight Saving", 2, 135, 2);
+  img.drawString("A : Set & Continue", 2, 155, 2);
+  img.setTextDatum(0);
+  img.drawString("SET TIMEZONE", 2, 2, 4);
+  img.pushSprite(0, 0);
+}
+
+void initLoadingUI() {
+  img.fillSprite(TFT_BLACK);
+  img.setFreeFont(&Orbitron_Light_24);
+  img.setTextColor(TFT_WHITE, TFT_BLACK);
+  img.setTextDatum(4);
+  img.drawString("Loading UI...", 160, 75);
+  img.pushSprite(0, 0);
+}
 
 void initDraw() {
 
@@ -183,11 +252,20 @@ void initDraw() {
       img.drawString(String(buttons[j][i]), posX[j] + boxW / 2, posY[i] + boxH / 2, 2);
     }
   }
+  if (operation > 0) {
+    img.drawRoundRect(fromLeft + (boxW * 3) + (space * 3) + 1, fromTop + (boxH * (operation - 1)) + (space * (operation - 1)) + 1, boxW - 2, boxH - 2, 3, color4);
+    img.drawRoundRect(fromLeft + (boxW * 3) + (space * 3), fromTop + (boxH * (operation - 1)) + (space * (operation - 1)), boxW, boxH, 3, color4);
+  }
   img.drawRoundRect(posX[cx], posY[cy], boxW, boxH, 3, TFT_WHITE);
 
   img.setTextDatum(5);
   img.setTextColor(TFT_WHITE, color2);
-  img.drawString(calcDisplay, fromLeft + 94, 38, 2);
+  if (calcDisplay.length() > 9) {
+    img.drawString(calcDisplay.substring(0, 9), fromLeft + 94, 38, 2);
+  } else {
+    img.drawString(calcDisplay, fromLeft + 94, 38, 2);
+  }
+
 
   img.setTextColor(TFT_WHITE, TFT_BLACK);
   caw = 24;
@@ -226,10 +304,8 @@ void initDraw() {
   img.drawString(String(timeHour) + ":" + String(timeMin), 130, -6);
   img.setFreeFont(&Orbitron_Light_24);
 
-
   img.setTextColor(0xD399, TFT_BLACK);
   img.drawString(String(timeSec), 250, -4);
-
 
   img.setTextColor(0x35F9, TFT_BLACK);
   img.setFreeFont(&FreeSans9pt7b);
@@ -237,7 +313,12 @@ void initDraw() {
 
   img.setTextColor(gray, TFT_BLACK);
   img.setTextFont(0);
-  img.drawString(ssidStr, 12, 12);
+  ssidStr.length();
+  if (ssidStr.length() > 10) {
+    img.drawString("ssid: " + ssidStr.substring(0, 10), 12, 12);
+  } else {
+    img.drawString("ssid: " + ssidStr, 12, 12);
+  }
   img.drawString("BATTERY:", 250, 34);
   img.drawString(String(volt) + " mV", 250, 46);
   img.drawRoundRect(304, 30, 12, 136, 2, TFT_SILVER);
@@ -249,207 +330,305 @@ void initDraw() {
 
   img.drawLine(cax - 10, cay - 10, cax + 152, cay - 10, gray);
 
-
   img.pushImage(298, 0, 26, 26, bright);
   img.pushSprite(0, 0);
 }
 
-
-
 void loop() {
 
-  if (t + 1000 < millis()) {
-    getLocalTime();
-    t = millis();
-  }
-
-  if (digitalRead(b) == 0) {
-    num = "";
-    calcDisplay = "0";
-    firstDigit = true;
-    changeOperator = false;
-    operation = 0;
-    n1 = 0;
-  }
-
-  if (digitalRead(up) == 0) {
-    if (db1 == 0) {
-      db1 = 1;
-      cy--;
-    }
-  } else db1 = 0;
-
-  if (digitalRead(down) == 0) {
-    if (db2 == 0) {
-      db2 = 1;
-      cy++;
-    }
-  } else db2 = 0;
-
-  if (digitalRead(left) == 0) {
-    if (db4 == 0) {
-      db4 = 1;
-      cx--;
-    }
-  } else db4 = 0;
-
-  if (digitalRead(right) == 0) {
-    if (db5 == 0) {
-      db5 = 1;
-      cx++;
-    }
-  } else db5 = 0;
-
-  if (digitalRead(14) == 0 && brightness < 240) {
-    brightness++;
-    ledcSetup(0, 10000, 8);
-    ledcAttachPin(38, 0);
-
-    ledcWrite(0, brightness);
-  }
-
-  if (digitalRead(0) == 0 && brightness > 10) {
-    brightness--;
-    ledcSetup(0, 10000, 8);
-    ledcAttachPin(38, 0);
-
-    ledcWrite(0, brightness);
-  }
-
-
-
-
-  if (cx == 4)
-    cx = 0;
-  if (cx == -1)
-    cx = 3;
-  if (cy == 4)
-    cy = 0;
-  if (cy == -1)
-    cy = 3;
-
-  if (digitalRead(a) == 0) {
-    if (db3 == 0) {
-      db3 = 1;
-      if (buttons[cx][cy] == '0' || buttons[cx][cy] == '1' || buttons[cx][cy] == '2' || buttons[cx][cy] == '3' || buttons[cx][cy] == '4' || buttons[cx][cy] == '5' || buttons[cx][cy] == '6' || buttons[cx][cy] == '7' || buttons[cx][cy] == '8' || buttons[cx][cy] == '9' || buttons[cx][cy] == '.') {
-        if (firstDigit == false) {
-          calcDisplay = calcDisplay + String(buttons[cx][cy]);
-        } else {
-          calcDisplay = String(buttons[cx][cy]);
-          firstDigit = false;
+  if (gmtSetup == true) {
+    //button input for gmt setup operation
+    if (digitalRead(b) == 0) {
+      if (db9 == 0) {
+        db9 = 1;
+        if (daylightOffset_sec == 3600) {
+          daylightOffset_sec = 0;
+        } else if (daylightOffset_sec == 0) {
+          daylightOffset_sec = 3600;
         }
-        num = calcDisplay;
-        changeOperator = false;
       }
+      initDrawGMTset();
+    } else db9 = 0;
+
+    if (digitalRead(14) == 0) {
+      if (db7 == 0) {
+        db7 = 1;
+        gmtOffset++;
+        initDrawGMTset();
+      }
+    } else db7 = 0;
+
+    if (digitalRead(0) == 0) {
+      if (db8 == 0) {
+        db8 = 1;
+        gmtOffset--;
+        initDrawGMTset();
+      }
+    } else db8 = 0;
+
+    if (digitalRead(a) == 0) {
+      gmtOffset_sec = (3600 * gmtOffset);
+      configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+      gmtSetup = false;
+      initLoadingUI();
+      delay(100);
+      num = "";
+      calcDisplay = "0";
+      firstDigit = true;
+      changeOperator = false;
+      operation = 0;
+      n1 = 0;
+    }
+  } else if (gmtSetup == false) {
+    //button setup for normal operation, all original code by VolosR
+    if (t + 1000 < millis()) {
+      if (noNet) {
+        getBatteryVoltage();
+      } else {
+        getLocalTime();  //nonet
+      }
+      t = millis();
+    }
+
+    if (digitalRead(b) == 0) {
+      calcDisplay = "0";
+      resetCalc();
+    }
+
+    if (digitalRead(up) == 0) {
+      if (db1 == 0) {
+        db1 = 1;
+        cy--;
+      }
+    } else db1 = 0;
+
+    if (digitalRead(down) == 0) {
+      if (db2 == 0) {
+        db2 = 1;
+        cy++;
+      }
+    } else db2 = 0;
+
+    if (digitalRead(left) == 0) {
+      if (db4 == 0) {
+        db4 = 1;
+        cx--;
+      }
+    } else db4 = 0;
+
+    if (digitalRead(right) == 0) {
+      if (db5 == 0) {
+        db5 = 1;
+        cx++;
+      }
+    } else db5 = 0;
+
+    if (cx == 4)
+      cx = 0;
+    if (cx == -1)
+      cx = 3;
+    if (cy == 4)
+      cy = 0;
+    if (cy == -1)
+      cy = 3;
 
 
-      if (buttons[cx][cy] == '+') {
-        if (changeOperator == false) {
+    if (digitalRead(14) == 0 && brightness < 240) {
+      brightness++;
+      ledcSetup(0, 10000, 8);
+      ledcAttachPin(38, 0);
+
+      ledcWrite(0, brightness);
+    }
+
+    if (digitalRead(0) == 0 && brightness > 10) {
+      brightness--;
+      ledcSetup(0, 10000, 8);
+      ledcAttachPin(38, 0);
+
+      ledcWrite(0, brightness);
+    }
+
+    if (digitalRead(a) == 0) {
+      if (db3 == 0) {
+        db3 = 1;
+        if (buttons[cx][cy] == '0' || buttons[cx][cy] == '1' || buttons[cx][cy] == '2' || buttons[cx][cy] == '3' || buttons[cx][cy] == '4' || buttons[cx][cy] == '5' || buttons[cx][cy] == '6' || buttons[cx][cy] == '7' || buttons[cx][cy] == '8' || buttons[cx][cy] == '9' || ((buttons[cx][cy] == '.') && (dPoint == false))) {
+          if (buttons[cx][cy] == '.') {
+            dPoint = true;
+          }
+          if (firstDigit == false) {
+            calcDisplay = calcDisplay + String(buttons[cx][cy]);
+
+
+          } else {
+            if (buttons[cx][cy] == '.') {
+              calcDisplay = "0" + String(buttons[cx][cy]);
+            } else calcDisplay = String(buttons[cx][cy]);
+            firstDigit = false;
+            pressedOperation = false;
+          }
+          num = calcDisplay;
+          changeOperator = false;
+        }
+
+
+        if (buttons[cx][cy] == '+') {
+          if (changeOperator == false) {
+            mathResult(operation);
+            operation = 4;
+            n1 = num.toDouble();
+            calcDisplay = num + " +";
+            firstDigit = true;
+          } else {
+            calcDisplay = num + " +";
+            operation = 4;
+          }
+        }
+        if (buttons[cx][cy] == '-') {
+          if (changeOperator == false) {
+            mathResult(operation);
+            operation = 3;
+            n1 = num.toDouble();
+            calcDisplay = num + " -";
+            firstDigit = true;
+          } else {
+            calcDisplay = num + " -";
+            operation = 3;
+          }
+        }
+        if (buttons[cx][cy] == '*') {
+          if (changeOperator == false) {
+            mathResult(operation);
+            operation = 2;
+            n1 = num.toDouble();
+            calcDisplay = num + " *";
+            firstDigit = true;
+          } else {
+            calcDisplay = num + " *";
+            operation = 2;
+          }
+        }
+        if (buttons[cx][cy] == '/') {
+          if (changeOperator == false) {
+            mathResult(operation);
+            operation = 1;
+            n1 = num.toDouble();
+            calcDisplay = num + " /";
+            firstDigit = true;
+          } else {
+            calcDisplay = num + " /";
+            operation = 1;
+          }
+        }
+
+        if (buttons[cx][cy] == '=') {
           mathResult(operation);
-          operation = 1;
-          n1 = num.toFloat();
-          calcDisplay = num + " +";
+          n1 = num.toDouble();
           firstDigit = true;
-        } else {
-          calcDisplay = num + " +";
-          operation = 1;
+          changeOperator = false;
+          operation = 0;
         }
       }
-      if (buttons[cx][cy] == '-') {
-        if (changeOperator == false) {
-          mathResult(operation);
-          operation = 2;
-          n1 = num.toFloat();
-          calcDisplay = num + " -";
-          firstDigit = true;
-        } else {
-          calcDisplay = num + " -";
-          operation = 2;
-        }
-      }
-      if (buttons[cx][cy] == '*') {
-        if (changeOperator == false) {
-          mathResult(operation);
-          operation = 3;
-          n1 = num.toFloat();
-          calcDisplay = num + " *";
-          firstDigit = true;
-        } else {
-          calcDisplay = num + " *";
-          operation = 3;
-        }
-      }
-      if (buttons[cx][cy] == '/') {
-        if (changeOperator == false) {
-          mathResult(operation);
-          operation = 4;
-          n1 = num.toFloat();
-          calcDisplay = num + " /";
-          firstDigit = true;
-        } else {
-          calcDisplay = num + " /";
-          operation = 4;
-        }
-      }
+    } else db3 = 0;
 
-      if (buttons[cx][cy] == '=') {
-        mathResult(operation);
-        n1 = num.toFloat();
-        firstDigit = true;
-        changeOperator = false;
-        operation = 0;
-      }
-    }
-  } else db3 = 0;
+    initDraw();
+  }
+}
 
-  initDraw();
+void resetCalc() {
+  num = "0";
+  firstDigit = true;
+  changeOperator = false;
+  operation = 0;
+  n1 = 0;
+  dPoint = false;
 }
 
 void mathResult(int operation) {
-  //Operation 1: Addition
-  if (operation == 1) {
-    float r = n1 + num.toFloat();
-    num = String(r);
-    n1 = num.toFloat();
-    int p = r * 10.00;
-    if (p % 10 == 0)
-      num = String(p / 10);
-    calcDisplay = num;
-  }
-  //Operation 2: Subtruction
-  if (operation == 2) {
-    float r = n1 - num.toFloat();
-    num = String(r);
-    n1 = num.toFloat();
-    int p = r * 10.00;
-    if (p % 10 == 0)
-      num = String(p / 10);
-    calcDisplay = num;
-  }
-  //Operation 3: Multiplication
-  if (operation == 3) {
-    float r = n1 * num.toFloat();
-    num = String(r);
-    n1 = num.toFloat();
-    int p = r * 10.00;
-    if (p % 10 == 0)
-      num = String(p / 10);
-    calcDisplay = num;
-  }
-  //Operation 4: Division
+  //Operation 4: Addition
   if (operation == 4) {
-    float r = n1 / num.toFloat();
-    num = String(r);
-    n1 = num.toFloat();
-    int p = r * 10.00;
-    if (p % 10 == 0)
-      num = String(p / 10);
-    calcDisplay = num;
+    double r = n1 + num.toDouble();
+    num = String(r, 8);
+    n1 = num.toDouble();
+    for (int x = 0; x < 8; x++) {
+      if (String(n1, x).toDouble() == String(n1, 8).toDouble()) {
+        num = String(r, x);
+        break;
+      }
+      n1 = num.toDouble();
+    }
+    if (abs(r) > 999999999) {
+      calcDisplay = "Too large";
+      resetCalc();
+    } else {
+      calcDisplay = num;
+      n1 = calcDisplay.toDouble();
+    }
+  }
+  //Operation 3: Subtruction
+  if (operation == 3) {
+    double r = n1 - num.toDouble();
+    num = String(r, 8);
+    n1 = num.toDouble();
+    for (int x = 0; x < 8; x++) {
+      if (String(n1, x).toDouble() == String(n1, 8).toDouble()) {
+        num = String(r, x);
+        break;
+      }
+    }
+    n1 = num.toDouble();
+    if (abs(r) > 999999999) {
+      calcDisplay = "Too large";
+      resetCalc();
+    } else
+      calcDisplay = num;
+  }
+  //Operation 2: Multiplication
+  if (operation == 2) {
+    double r = n1 * num.toDouble();
+    num = String(r, 8);
+    n1 = num.toDouble();
+    for (int x = 0; x < 8; x++) {
+      if (String(n1, x).toDouble() == String(n1, 8).toDouble()) {
+        num = String(r, x);
+        break;
+      }
+    }
+    n1 = num.toDouble();
+    if (abs(r) > 999999999) {
+      calcDisplay = "Too large";
+      resetCalc();
+    } else
+      calcDisplay = num;
+  }
+  //Operation 1: Division
+  if (operation == 1) {
+    double r = n1 / num.toDouble();
+    num = String(r, 8);
+    n1 = num.toDouble();
+
+    for (int x = 0; x < 8; x++) {
+      if (String(n1, x).toDouble() == String(n1, 8).toDouble()) {
+        num = String(r, x);
+        break;
+      }
+    }
+    n1 = num.toDouble();
+    if (abs(r) > 999999999) {
+      calcDisplay = "Too large";
+      resetCalc();
+    } else
+      calcDisplay = num;
   }
   //Operation 0: Other, or equality without operation
   if (operation == 0) {}
 
   changeOperator = true;
+  dPoint = false;
+}
+
+void getBatteryVoltage() {
+  volt = (analogRead(4) * 2 * 3.3 * 1000) / 4096;
 }
 
 void getLocalTime() {
@@ -458,7 +637,6 @@ void getLocalTime() {
   struct tm timeinfo;
 
   if (!getLocalTime(&timeinfo)) {
-
     return;
   }
 
@@ -495,4 +673,108 @@ void getLocalTime() {
     if (j == -1)
       j = 6;
   }
+}
+
+//Code based on Xinyuan-LilyGO T-Display-S3 factory example
+void wifi_connect(void) {
+  String text;
+  delay(100);
+  netDisplayMsg = "Attempting WiFi Connection";
+  initDrawNetwork();
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+  int n = WiFi.scanNetworks();
+  if (n == 0) {
+    netDisplayMsg = "No networks found";
+    addLineNetwork(1);
+    delay(1000);
+  } else {
+    text = n;
+    text += " networks found";
+    netDisplayMsg = text;
+    initDrawNetwork();
+    for (int i = 0; i < n; ++i) {
+      text = (i + 1);
+      text += ": ";
+      text += WiFi.SSID(i);
+      text += " (";
+      text += WiFi.RSSI(i);
+      text += ")";
+      text += (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " \n" : "*\n";
+      netDisplayMsg = text;
+      addLineNetwork(i + 1);
+      delay(10);
+    }
+  }
+  delay(1000);
+  text = "Connecting to ";
+  text += WIFI_SSID;
+  netDisplayMsg = text;
+  initDrawNetwork();
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORLD);
+  uint32_t last_tick = millis();
+  uint32_t i = 0;
+  bool is_smartconfig_connect = false;
+  while (WiFi.status() != WL_CONNECTED) {
+    text += ".";
+    netDisplayMsg = text;
+    initDrawNetwork();
+    delay(250);
+    if (millis() - last_tick > WIFI_CONNECT_WAIT_MAX) { /* Automatically start smartconfig when connection times out */
+      if (noNet) {
+        // initLoadingUI();
+        break;
+      }
+      text = "Timed out, starting SmartConfig";
+      netDisplayMsg = text;
+      addLineNetwork(1);
+      delay(100);
+      is_smartconfig_connect = true;
+      WiFi.mode(WIFI_AP_STA);
+      text = "Waiting for SmartConfig....";
+      netDisplayMsg = text;
+      addLineNetwork(4);
+      text = "B to cancel and go OFFLINE";
+      netDisplayMsg = text;
+      addLineNetwork(5);
+      text = "Use EspTouch Apps to connect to your network";
+      netDisplayMsg = text;
+      addLineNetwork(2);
+      WiFi.beginSmartConfig();
+      while (1) {
+        if (noNet) {
+          break;
+        } else {
+          delay(100);
+          if (digitalRead(b) == 0) {
+            noNet = true;
+          }
+          if (noNet) break;
+          if (WiFi.smartConfigDone()) {
+            text = "\nSmartConfig Success";
+            netDisplayMsg = text;
+            initDrawNetwork();
+            delay(1000);
+            last_tick = millis();
+            break;
+          }
+        }
+      }
+    }
+  }
+  if (!is_smartconfig_connect) {
+    text = "\nCONNECTED \nIN ";
+    text += millis() - last_tick;
+    text += " ms\n";
+    netDisplayMsg = text;
+    initDrawNetwork();
+  }
+  initDrawNetwork();
+  delay(200);
+}
+
+void gmtSet() {
+  gmtOffset_sec = (3600 * gmtOffset);
+  initDrawGMTset();
 }
