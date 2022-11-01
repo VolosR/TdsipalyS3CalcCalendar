@@ -1,4 +1,10 @@
 # TdsipalyS3CalcCalendar
+Changelog v1.32
+Fixed decimal place accuracy to more than 2 decimal places by changing Floats to Doubles.
+
+Changelog v1.31
+Single Decimal point allowed. User can't input numbers of the following format 3...2 or 2.5.6
+
 Changelog v1.3
 Custom GMT setting.
 
