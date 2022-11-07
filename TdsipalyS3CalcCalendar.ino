@@ -1,6 +1,7 @@
 #include <TFT_eSPI.h>
 #include <WiFi.h>
 #include "time.h"
+#include "OneButton.h"
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite img = TFT_eSprite(&tft);
@@ -128,6 +129,9 @@ int brightness = 150;
 
 String ssidStr = "No WiFi";
 
+OneButton button(b, true);  //Suspend function button
+bool flags_sleep = false;
+
 void setup() {
 
   pinMode(15, OUTPUT);
@@ -162,6 +166,10 @@ void setup() {
   ledcSetup(0, 10000, 8);
   ledcAttachPin(38, 0);
   ledcWrite(0, brightness);
+
+  button.attachMultiClick([] {
+    flags_sleep = 1;
+  });
 }
 
 #define color1 0x33AE  //body
@@ -319,6 +327,9 @@ void initDraw() {
   img.drawString(String(volt) + " mV", 250, 46);
   img.drawRoundRect(304, 30, 12, 136, 2, TFT_SILVER);
 
+  img.setTextColor(TFT_BROWN, TFT_BLACK);
+  img.drawString("A:select B:Clear", 14, 53);
+
   seg = brightness / 24;
   for (int i = 0; i < seg; i++)
     img.fillRect(308, 150 - (i * 13), 4, 11, 0x35F9);
@@ -376,6 +387,23 @@ void loop() {
       n1 = 0;
     }
   } else if (gmtSetup == false) {
+    //Suspend code
+    button.tick();
+    if (flags_sleep) {
+      flags_sleep = false;
+      tft.fillScreen(TFT_BLACK);
+      tft.setFreeFont(&Orbitron_Light_24);
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);
+      tft.setTextDatum(4);
+      tft.drawString("Shutting down...", 160, 75);
+      delay(1000);
+      digitalWrite(15, LOW);
+      gpio_hold_en((gpio_num_t)a);
+      esp_sleep_enable_ext0_wakeup((gpio_num_t)b, 0);
+      esp_deep_sleep_start();
+    }
+    delay(1);
+
     //button setup for normal operation, all original code by VolosR
     if (t + 1000 < millis()) {
       if (noNet) {
