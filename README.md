@@ -25,7 +25,9 @@ Calculator header shows SSID.
 Demo app with Calculator and Calendar for Lilygo T-display S3.
 The board used for this project is Lilygo T-display S3 (ESP32-S3 with a screen)
 Custom TFT-eSPI library is needed and can be found on Lilygo github,
+https://github.com/Xinyuan-LilyGO/T-Display-S3/tree/main/lib
 along with instructions on how to config this board on Arduino IDE.
+https://github.com/Xinyuan-LilyGO/T-Display-S3/tree/main
 
 This version (v1.5) has a complete working calculator where each operator
 calculates and displays the previous result and then waits for new operation.
