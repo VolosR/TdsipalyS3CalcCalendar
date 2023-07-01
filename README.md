@@ -58,3 +58,14 @@ https://www.youtube.com/watch?v=50uPv7tsVIc&t=1s
 
 Original work is made by VolosR.
 WiFi SmartConfig code is based on Xinyuan-LilyGO T-Display-S3 factory example.
+
+The libraries that are working with the ESP32S3 (custom or modified) 
+are included in the workingLibsS3.zip file and currently have:
+LVGL ver 8.3.4
+OneButton ver 2.0.4 (disabled touch by default)
+TFT_eSPI ver 2.5.0 (selected driver: setup206 on User_Setup_Select.h)
+
+The above libraries might not work on different boards, so everytime you work with
+a different board, make sure to use compatible libraries, or manually make the
+changes needed (example comment/uncomment the corresponding driver on 
+TFT_eSPI User_Setup_Select.h file.
